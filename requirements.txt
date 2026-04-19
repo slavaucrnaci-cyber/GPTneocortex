@@ -1,1 +1,6 @@
-# empty for now
+# eAgent
+ ├── retrieves memory
+ ├── calls planner
+ ├── executes plan
+ ├── evaluates
+ └── stores tracempty for now
