@@ -1,38 +1,21 @@
 class LLMPlanner:
 
-    def plan(self, message, feedback=None, state=None):
-        text = message.text.lower()
+    def __init__(self, memory):
+        self.memory = memory
 
-        score = 0
-        if state:
-            score = state.global_meta.get("last_score", 0)
+    def plan(self, message, feedback=None, state=None, retrieved=None):
 
-        # 💥 если решение слабое — меняем стратегию
-        if score < 0.5 and feedback:
+        # 1. используем уже переданный retrieval
+        if retrieved:
+            best = max(retrieved, key=lambda t: t["score"])
+            return {"plan": best["strategy"]}
 
-            shadow_attempts = state.global_meta.get("shadow_attempts", 0)
+        # 2. fallback retrieval внутри
+        similar = self.memory.search(message.text)
 
-            if shadow_attempts >= 2:
-                return {
-                    "plan": ["sensory", "cognitive", "synthesis"]
-                }
+        if similar:
+            best = max(similar, key=lambda t: t["score"])
+            return {"plan": best["strategy"]}
 
-            return {
-                "plan": ["sensory", "shadow", "shadow", "synthesis"]
-            }
-
-        # 💥 если уже хорошо — не усложняем
-        if score > 0.7:
-            return {
-                "plan": ["sensory", "synthesis"]
-            }
-
-        # базовая логика
-        if "fear" in text or "uncertainty" in text:
-            return {
-                "plan": ["sensory", "shadow", "synthesis"]
-            }
-
-        return {
-            "plan": ["sensory", "synthesis"]
-        }
+        # 3. дефолт
+        return {"plan": ["sensory", "synthesis"]}
