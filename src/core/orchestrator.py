@@ -5,19 +5,13 @@ from src.blocks.synthesis_worker import SynthesisWorker
 from src.blocks.cognitive_worker import CognitiveWorker
 from src.core.planner import LLMPlanner
 
-
 class Orchestrator:
 
-    def __init__(self):
+    def __init__(self, memory):
+        self.memory = memory
         self.registry = WorkerRegistry()
-        self.planner = LLMPlanner()
-
-        # регистрация воркеров
-        self.registry.register(SensoryWorker())
-        self.registry.register(ShadowWorker())
-        self.registry.register(SynthesisWorker())
-        self.registry.register(CognitiveWorker())  # 🔥 здесь правильно
-
+        self.planner = LLMPlanner(self.memory)
+        
     def run_with_plan(self, message, state, plan):
         for step in plan["plan"]:
             print(f"\n→ Running: {step}")

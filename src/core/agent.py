@@ -9,64 +9,56 @@ class Agent:
 
     def __init__(self, memory):
         self.memory = memory
-        self.orchestrator = Orchestrator()
+        self.orchestrator = Orchestrator(self.memory)
         self.evaluator = Evaluator()
         self.max_iters = 3
 
     def run(self, message, state):
 
-        feedback = None
-        best_score = 0
-        best_message = message
+       feedback = None
+       best_score = 0
+       best_message = message
 
-        for i in range(self.max_iters):
+       for i in range(self.max_iters):
 
-            # 🔍 retrieval
-            retrieved_memory = self.memory.search(message.text)
+           retrieved_memory = self.memory.search(message.text)
 
-            # 🧠 planning
-            plan = self.orchestrator.planner.plan(message, feedback, state)
+           plan = self.orchestrator.planner.plan(
+               message,
+               feedback,
+               state,
+               retrieved=retrieved_memory
+            )
 
-            # ⚙️ execution
-            message = self.orchestrator.run_with_plan(message, state, plan)
+           message = self.orchestrator.run_with_plan(message, state, plan)
 
-            if message is None:
-                print("💥 Agent received None — stopping")
-                return None
+           if message is None:
+               return None
 
-            # 📊 evaluation
-            evaluation = self.evaluator.evaluate(message, state)
-            score = evaluation.get("score", 0)
+           evaluation = self.evaluator.evaluate(message, state)
+           score = evaluation.get("score", 0)
 
-            # 🧬 trace (как dict, без усложнения)
-            trace = {
-                "input": message.text,
-                "strategy": plan["plan"],
-                "retrieved": retrieved_memory,
-                "state": state.global_meta.copy(),
-                "output": message.text,
-                "score": score
+           trace = {
+               "input": message.text,
+               "strategy": plan["plan"],
+               "retrieved": retrieved_memory,
+               "state": state.global_meta.copy(),
+               "output": message.text,
+               "score": score
             }
 
-            # 💾 сохраняем только хорошие
-            if score > 0.6:
+           if score > 0.6:
                 self.memory.store_trace(trace)
 
-            # 🏆 лучший результат
-            if score > best_score:
-                best_score = score
-                best_message = message
-                state.global_meta["last_score"] = score
+           if score > best_score:
+               best_score = score
+               best_message = message
+               state.global_meta["last_score"] = score
 
-            print(f"\n[ITER {i}] PLAN:", plan)
-            print(f"[ITER {i}] EVAL:", evaluation)
+           if score > 0.75:
+               break
 
-            # 🛑 stop condition
-            if score > 0.75:
-                break
+           feedback = evaluation
+           message.text = self.rewrite(message.text)
 
-            # 🔁 feedback loop
-            feedback = evaluation
-            message.text = self.rewrite(message.text)
-
-        return best_message
+       return best_message
